@@ -38,6 +38,7 @@ def correctRows(p):
             if(float(p[4])> 60 and float(p[5])>0 and float(p[11])> 0 and float(p[16])> 0):
                 return p
 '''
+# Testing the helper code
 # Set your file path here 
 path="file:///C:/Users/brand/OneDrive/Documents/CS777/HW1/Data/"
 testFile= path + "taxi-data-sorted-small.csv"
@@ -53,7 +54,7 @@ taxilinesCorrected = testRDD.filter(correctRows)
 
 taxilinesCorrected_df = taxilinesCorrected.toDF()
 # Group by medallion and count distinct drivers
-taxilinesCorrected_grouped = taxilinesCorrected_df.groupBy("_c0").agg(countDistinct("_c1"))
+taxilinesCorrected_grouped = taxilinesCorrected_df.groupBy("_c0").agg(countDistinct("_c1").alias("driver_count"))
 # Get the top ten taxis with the highest count of distinct drivers
 top_ten_taxis = taxilinesCorrected_grouped.orderBy(col("driver_count").desc()).limit(10)
 '''
@@ -78,13 +79,22 @@ if __name__ == "__main__":
 
     #Task 1
     #Your code goes here
+    #Group by medalion number (c0) and count the number of drivers (c1) this will rename the count as driver_count
     results_1 = taxilinesCorrected_df.groupBy("_c0").agg(countDistinct("_c1").alias("driver_count"))
+    # Return 10 highest driver counts
+    results_1 = results_1.orderBy(col("driver_count").desc()).limit(10)
     results_1.coalesce(1).saveAsTextFile(sys.argv[2])
 
 
     #Task 2
     #Your code goes here
-    results_2 = taxilinesCorrected_df.count()
+     # Divide fare amount by duration (in seconds/60) to get cost per minute for each driver
+     # Column is callled mone per minute
+    taxilinesCorrected_df = taxilinesCorrected_df.withColumn("minute_rate", col("_c11") / (col("_c4") / 60))
+    # Group by the driver ID and take the average rate for each driver
+    results_2 = taxilinesCorrected_df.groupBy("_c1").agg(avg("minute_rate").alias("avg_minute_rate"))
+    # Get the top ten drivers with the highest average earnings per minute
+    results_2 = results_2.orderBy(col("avg_minute_rate").desc()).limit(10)
 
     #savings output to argument
     results_2.coalesce(1).saveAsTextFile(sys.argv[3])
